@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis Protocol — Test Console</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1c2330;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --pass: #3fb950;
+      --fail: #f85149;
+      --warn: #d29922;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+    }
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 18px; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; color: var(--muted); }
+    input, select {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+    button {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .progress-outer {
+      height: 18px; background: var(--panel-2); border-radius: 9px;
+      overflow: hidden; border: 1px solid var(--border); margin-top: 14px;
+    }
+    .progress-inner {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #1f6feb, #58a6ff);
+      transition: width .15s ease; border-radius: 9px;
+    }
+    .progress-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .card .k { font-size: 12px; color: var(--muted); }
+    .card .v { font-size: 22px; font-weight: 700; margin-top: 6px; font-family: var(--mono); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 920px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .trace-row { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+    .trace-row .tk { width: 130px; color: var(--muted); flex-shrink: 0; font-size: 12px; }
+    .trace-row .tv { font-family: var(--mono); font-size: 12px; word-break: break-all; color: var(--text); }
+    .phases { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .phase { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); }
+    .phase.pass { background: rgba(63,185,80,.15); color: var(--pass); border-color: var(--pass); }
+    .phase.fail { background: rgba(248,81,73,.15); color: var(--fail); border-color: var(--fail); }
+    .phase.idle { color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+    td.mono { font-family: var(--mono); font-size: 12px; }
+    .tag { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .tag.pass { background: rgba(63,185,80,.15); color: var(--pass); }
+    .tag.fail { background: rgba(248,81,73,.15); color: var(--fail); }
+    .scroll { max-height: 360px; overflow-y: auto; }
+
+    textarea {
+      width: 100%; min-height: 150px; background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 12px; font-family: var(--mono);
+      font-size: 13px; line-height: 1.6; resize: vertical;
+    }
+    .status { font-size: 13px; color: var(--muted); margin-left: auto; }
+    .row-between { display: flex; align-items: center; gap: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Aegis Protocol — Mutual Authentication Test Console</h1>
+    <p>AES-128 (CBC) + SHA-256 three-phase challenge-response · NXP NTAG 424 DNA TT model</p>
+  </header>
+
+  <div class="wrap">
+    <!-- Controls -->
+    <div class="panel">
+      <h2>Test Configuration</h2>
+      <div class="controls">
+        <div class="field">
+          <label for="count">Iterations</label>
+          <input id="count" type="number" min="1" value="1000" style="width:140px" />
+        </div>
+        <div class="field">
+          <label for="fault">Fault mode</label>
+          <select id="fault" style="width:200px">
+            <option value="legitimate">legitimate</option>
+            <option value="wrong-key">wrong-key</option>
+            <option value="tampered-rndb">tampered-rndb</option>
+            <option value="random-fault">random-fault (5%)</option>
+          </select>
+        </div>
+        <button id="runBtn">Run Test</button>
+        <button id="exportBtn" class="secondary" disabled>Export JSON</button>
+        <span id="status" class="status">Idle.</span>
+      </div>
+      <div class="progress-outer"><div id="progressInner" class="progress-inner"></div></div>
+      <div id="progressLabel" class="progress-label">0 / 0 (0%)</div>
+    </div>
+
+    <!-- Metric cards -->
+    <div class="panel">
+      <h2>Live Metrics</h2>
+      <div class="cards">
+        <div class="card"><div class="k">Total runs</div><div id="m-total" class="v">0</div></div>
+        <div class="card"><div class="k">Passed</div><div id="m-passed" class="v" style="color:var(--pass)">0</div></div>
+        <div class="card"><div class="k">Failed</div><div id="m-failed" class="v" style="color:var(--fail)">0</div></div>
+        <div class="card"><div class="k">Success rate</div><div id="m-rate" class="v">0%</div></div>
+        <div class="card"><div class="k">Avg latency</div><div id="m-avg" class="v">0 ms</div></div>
+        <div class="card"><div class="k">Unique keys</div><div id="m-unique" class="v">0</div></div>
+        <div class="card"><div class="k">Collisions</div><div id="m-collisions" class="v">0</div></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Protocol trace -->
+      <div class="panel">
+        <h2>Last Handshake — Protocol Trace</h2>
+        <div class="phases">
+          <span id="p1" class="phase idle">Phase 1 · Chip→Backend</span>
+          <span id="p2" class="phase idle">Phase 2 · Backend→Chip</span>
+          <span id="p3" class="phase idle">Phase 3 · Session Key</span>
+        </div>
+        <div id="trace">
+          <div class="trace-row"><div class="tk">Run a test to populate the protocol trace.</div></div>
+        </div>
+      </div>
+
+      <!-- Histogram -->
+      <div class="panel">
+        <h2>Latency Distribution</h2>
+        <canvas id="histogram" height="240"></canvas>
+      </div>
+    </div>
+
+    <!-- Research summary -->
+    <div class="panel">
+      <h2>Research Summary (paper-ready)</h2>
+      <textarea id="research" readonly placeholder="The auto-generated research paragraph will appear here after a run."></textarea>
+    </div>
+
+    <!-- Results log -->
+    <div class="panel">
+      <div class="row-between" style="margin-bottom:12px">
+        <h2 style="margin:0">Results Log (last 100 runs)</h2>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Run #</th><th>Result</th><th>Session Key (first 16 hex)</th><th>Latency (ms)</th><th>Fault</th></tr>
+          </thead>
+          <tbody id="logBody">
+            <tr><td colspan="5" style="color:var(--muted)">No results yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let histogramChart = null;
+    let evtSource = null;
+
+    function setPhase(el, state, baseLabel) {
+      el.className = 'phase ' + (state === true ? 'pass' : state === false ? 'fail' : 'idle');
+      const mark = state === true ? ' ✓' : state === false ? ' ✗' : '';
+      el.textContent = baseLabel + mark;
+    }
+
+    function fmt(n, d = 4) {
+      if (n === null || n === undefined || Number.isNaN(n)) return '—';
+      return Number(n).toFixed(d);
+    }
+
+    function updateMetrics(s) {
+      $('m-total').textContent = s.done ?? s.totalRuns ?? 0;
+      $('m-passed').textContent = s.passed ?? 0;
+      $('m-failed').textContent = s.failed ?? 0;
+      $('m-rate').textContent = fmt(s.successRate, 2) + '%';
+      $('m-avg').textContent = fmt(s.avgLatencyMs, 4) + ' ms';
+      $('m-unique').textContent = s.uniqueSessionKeys ?? 0;
+      $('m-collisions').textContent = s.sessionKeyCollisions ?? 0;
+    }
+
+    function renderTrace(t) {
+      if (!t) return;
+      setPhase($('p1'), t.phases.phase1, 'Phase 1 · Chip→Backend');
+      setPhase($('p2'), t.phases.phase2, 'Phase 2 · Backend→Chip');
+      setPhase($('p3'), t.phases.phase3, 'Phase 3 · Session Key');
+
+      const rows = [
+        ['ChipSecretKey', t.chipSecretKey],
+        ['Backend Key', t.backendKey],
+        ['RndB', t.rndB],
+        ['Ciphertext_E', t.ciphertextE],
+        ['RndA', t.rndA],
+        ['RndB_prime', t.rndBPrime],
+        ['Ciphertext_F', t.ciphertextF],
+        ['SessionKey', t.sessionKey || '(not derived — auth failed)'],
+        ['Applied fault', t.appliedFault],
+        ['Latency (ms)', fmt(t.latencyMs, 4)],
+      ];
+      $('trace').innerHTML = rows
+        .map((r) => `<div class="trace-row"><div class="tk">${r[0]}</div><div class="tv">${r[1] ?? '—'}</div></div>`)
+        .join('');
+    }
+
+    function renderLog(results) {
+      if (!results || !results.length) return;
+      const body = results
+        .slice()
+        .reverse()
+        .map((r) => {
+          const skey = r.sessionKeyHex || (r.trace && r.trace.sessionKeyHex) || null;
+          const key = skey ? skey.slice(0, 16) : '—';
+          const tag = r.passed ? '<span class="tag pass">PASS</span>' : '<span class="tag fail">FAIL</span>';
+          return `<tr><td class="mono">${r.run}</td><td>${tag}</td><td class="mono">${key}</td><td class="mono">${fmt(r.latencyMs, 4)}</td><td class="mono">${r.fault}</td></tr>`;
+        })
+        .join('');
+      $('logBody').innerHTML = body;
+    }
+
+    function buildHistogram(latencies) {
+      if (!latencies || !latencies.length) return;
+      const min = Math.min(...latencies);
+      const max = Math.max(...latencies);
+      const bins = 20;
+      const width = (max - min) / bins || 1;
+      const counts = new Array(bins).fill(0);
+      for (const l of latencies) {
+        let idx = Math.floor((l - min) / width);
+        if (idx >= bins) idx = bins - 1;
+        if (idx < 0) idx = 0;
+        counts[idx]++;
+      }
+      const labels = counts.map((_, i) => (min + i * width).toFixed(3));
+
+      if (histogramChart) histogramChart.destroy();
+      histogramChart = new Chart($('histogram'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Handshakes',
+            data: counts,
+            backgroundColor: 'rgba(88,166,255,0.6)',
+            borderColor: 'rgba(88,166,255,1)',
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#c9d1d9' } } },
+          scales: {
+            x: { title: { display: true, text: 'Latency (ms)', color: '#8b949e' }, ticks: { color: '#8b949e', maxRotation: 60, minRotation: 60 }, grid: { color: '#30363d' } },
+            y: { title: { display: true, text: 'Count', color: '#8b949e' }, ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+          },
+        },
+      });
+    }
+
+    function setProgress(done, total) {
+      const pct = total > 0 ? (done / total) * 100 : 0;
+      $('progressInner').style.width = pct.toFixed(1) + '%';
+      $('progressLabel').textContent = `${done} / ${total} (${pct.toFixed(1)}%)`;
+    }
+
+    function startRun() {
+      const count = Math.max(1, parseInt($('count').value, 10) || 1000);
+      const fault = $('fault').value;
+
+      $('runBtn').disabled = true;
+      $('exportBtn').disabled = true;
+      $('status').textContent = 'Running...';
+      setProgress(0, count);
+
+      if (evtSource) evtSource.close();
+      evtSource = new EventSource(`/api/run?count=${count}&fault=${encodeURIComponent(fault)}`);
+
+      evtSource.addEventListener('start', (e) => {
+        const d = JSON.parse(e.data);
+        setProgress(0, d.count);
+      });
+
+      evtSource.addEventListener('progress', (e) => {
+        const d = JSON.parse(e.data);
+        setProgress(d.done, d.total);
+        updateMetrics(d);
+        if (d.lastTrace) renderTrace(d.lastTrace);
+      });
+
+      evtSource.addEventListener('done', (e) => {
+        const d = JSON.parse(e.data);
+        updateMetrics(d.summary);
+        $('m-total').textContent = d.summary.totalRuns;
+        renderLog(d.recentResults);
+        buildHistogram(d.latencies);
+        $('research').value = d.researchSummary;
+        $('status').textContent = 'Done.';
+        $('runBtn').disabled = false;
+        $('exportBtn').disabled = false;
+        setProgress(d.summary.totalRuns, d.summary.totalRuns);
+        evtSource.close();
+      });
+
+      evtSource.addEventListener('error', (e) => {
+        let msg = 'Connection error.';
+        try { if (e.data) msg = JSON.parse(e.data).message; } catch (_) {}
+        $('status').textContent = 'Error: ' + msg;
+        $('runBtn').disabled = false;
+        if (evtSource) evtSource.close();
+      });
+    }
+
+    $('runBtn').addEventListener('click', startRun);
+    $('exportBtn').addEventListener('click', () => {
+      window.location.href = '/api/export';
+    });
+  </script>
+</body>
+</html>

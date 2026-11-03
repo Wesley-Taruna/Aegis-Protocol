@@ -1,0 +1,29 @@
+{
+  "name": "aegis-protocol-test",
+  "version": "1.0.0",
+  "description": "Testing suite for the Aegis mutual authentication protocol (AES-128 + SHA-256 challenge-response, modelled on the NXP NTAG 424 DNA TT chip).",
+  "main": "src/protocol.js",
+  "scripts": {
+    "test": "node run-tests.js",
+    "start": "node server.js",
+    "legitimate": "node run-tests.js --count 1000 --fault legitimate",
+    "wrong-key": "node run-tests.js --count 1000 --fault wrong-key",
+    "tampered-rndb": "node run-tests.js --count 1000 --fault tampered-rndb",
+    "random-fault": "node run-tests.js --count 1000 --fault random-fault"
+  },
+  "keywords": [
+    "ntag424",
+    "aes-128",
+    "sha-256",
+    "mutual-authentication",
+    "challenge-response",
+    "nfc"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
